@@ -18,6 +18,7 @@ jupyter_env/
 # Local environment files
 .env
 .env.*
+.tmp/
 
 # Large raw datasets
 CoEdit/
@@ -25,12 +26,14 @@ Enron/
 data/raw/**/*
 !data/raw/README.md
 
-# Generated corpus files
-data/processed/*
+# Generated Phase 1 corpus file
+data/processed/tokenizer_corpus.txt
 !data/processed/.gitkeep
 
 # Future training outputs/checkpoints
 checkpoints/
+model/saved_model/
+model/evaluation_results.json
 models/
 runs/
 wandb/

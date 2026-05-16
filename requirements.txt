@@ -1,2 +1,5 @@
 tokenizers>=0.15.0
 transformers>=4.38.0
+torch>=2.0.0
+accelerate>=0.26.0
+streamlit>=1.30.0
