@@ -57,7 +57,9 @@ def generate_rewrite(
         return_tensors="pt",
         max_length=MAX_INPUT_LENGTH,
         truncation=True,
-    ).to(device)
+    )
+    inputs.pop("token_type_ids", None)
+    inputs = inputs.to(device)
 
     with torch.no_grad():
         output_ids = model.generate(
