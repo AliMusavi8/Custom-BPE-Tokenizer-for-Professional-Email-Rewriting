@@ -1,24 +1,25 @@
 # Custom BPE Tokenizer for Professional Email Rewriting
 
-This project builds a small email rewriting system in two stages:
+This project builds a small email rewriting system in three stages:
 
 1. Train a custom BPE tokenizer on CoEdit text and Enron email language.
-2. Train a small T5-style encoder-decoder model from scratch to rewrite rough emails into clearer, more professional emails.
+2. Train a small GPT-2-style decoder-only base model from scratch on WikiText using the custom tokenizer.
+3. Continue training that custom model on rough-email to professional-email rewrite pairs.
 
-The model is **not FLAN-T5** and it does **not** load pretrained T5 weights. It only uses the T5 architecture, initialized from random weights, with the custom tokenizer trained in this project.
+The model does **not** load pretrained GPT-2, T5, or FLAN-T5 weights. It uses a GPT-2-style causal language model architecture, initialized from random weights, with the custom tokenizer trained in this project.
 
 ## How It Works
 
 The tokenizer learns subword pieces using Byte Pair Encoding, so common words and email phrases can become compact tokens while rare words are split into smaller reusable parts. This helps the model handle professional email vocabulary without needing a huge vocabulary.
 
-The rewriting model follows an encoder-decoder pattern:
+The rewriting model follows a prompt-completion pattern:
 
 ```text
 Rough email + instruction
 ↓
 Custom BPE tokenizer
 ↓
-T5-style encoder-decoder model
+Custom GPT-2-style decoder-only model
 ↓
 Professional rewritten email
 ```
@@ -30,12 +31,13 @@ This project uses two main datasets plus a small set of custom email examples:
 ```text
 CoEdit
 Enron Emails
+WikiText-103
 Custom email rewriting examples
 ```
 
 ### CoEdit
 
-CoEdit is used in both phases.
+CoEdit is used for tokenizer training and rewrite-task training.
 
 For tokenizer training, both the source and target text are treated as plain text:
 
@@ -44,8 +46,17 @@ CoEdit source text
 CoEdit target text
 ```
 
-For model training, CoEdit is the main paired dataset because it already contains input-output rewriting examples. The pairs are converted into this format:
+For rewrite-task training, CoEdit is the main paired dataset because it already contains input-output rewriting examples. The pairs are converted into this format:
 
+```text
+Instruction: Rewrite this email professionally and concisely. Do not use em dashes.
+Input: rough email text
+Output: professional rewritten email
+```
+
+### WikiText-103
+
+WikiText-103 is used for base model training. It is stored locally as a Hugging Face Arrow dataset with a single `text` column. The base training script tokenizes the cleaned text and packs it into fixed-length causal language modeling blocks.
 
 ### Enron Emails
 
@@ -61,7 +72,7 @@ Enron is not used as direct model training pairs because it does not naturally p
 
 ### Custom Email Examples
 
-Custom email rewriting examples are added to Phase 2 because the final task is professional email rewriting. These cover common situations such as requesting files, asking for deadline extensions, following up on meetings, apologizing for late submissions, confirming attendance, and requesting feedback.
+Custom email rewriting examples are added to Phase 3 because the final task is professional email rewriting. These cover common situations such as requesting files, asking for deadline extensions, following up on meetings, apologizing for late submissions, confirming attendance, and requesting feedback.
 
 ## Project Structure
 
@@ -71,7 +82,8 @@ tokenizer/train_tokenizer.py        Train and save the custom BPE tokenizer.
 tokenizer/test_tokenizer.py         Print tokenizer quality checks.
 
 model/prepare_dataset.py            Create train/validation/test JSONL files.
-model/train_model.py                Train the small T5-style rewriting model.
+model/pretrain_base_model.py        Train the custom base model from scratch.
+model/train_model.py                Train the small GPT-style rewriting model.
 model/inference.py                  Rewrite one rough email using the trained model.
 model/evaluate_model.py             Evaluate outputs and save metrics.
 
@@ -118,7 +130,27 @@ Test it:
 python tokenizer/test_tokenizer.py
 ```
 
-## Phase 2: Rewriting Model
+## Phase 2: Base Model
+
+Train the custom decoder-only base model from scratch on WikiText:
+
+```bash
+python model/pretrain_base_model.py
+```
+
+If local multiprocessing works on your machine, you can speed up dataset preprocessing and loading:
+
+```bash
+DATASET_NUM_PROC=4 DATALOADER_NUM_WORKERS=2 python model/pretrain_base_model.py
+```
+
+Output:
+
+```text
+model/base_model/
+```
+
+## Phase 3: Rewriting Model
 
 Prepare paired training data:
 
